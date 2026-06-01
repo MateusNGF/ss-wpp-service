@@ -134,6 +134,19 @@ Retorna a string bruta do QR Code gerado pelo WhatsApp (caso esteja no fluxo de 
 }
 ```
 
+#### 5. Efetuar Logout
+**`POST /logout`**
+
+Desconecta o bot e limpa completamente a sessão atual do banco de dados, permitindo que um novo número seja pareado via `/pair` ou `/qrcode`.
+
+**Exemplo de Resposta:**
+```json
+{
+  "success": true,
+  "message": "Logout efetuado com sucesso. O bot foi desconectado e as credenciais limpas."
+}
+```
+
 ---
 
 ## 🛠️ Configuração e Variáveis de Ambiente

@@ -4,6 +4,7 @@ from core.models.schemas import PairingPayload
 from application.use_cases.get_status import GetConnectionStatusUseCase
 from application.use_cases.request_pairing import RequestPairingUseCase
 from application.use_cases.get_qrcode import GetQRCodeUseCase
+from application.use_cases.logout import LogoutUseCase
 from core.exceptions.domain_exceptions import NotificationDeliveryError
 
 router = APIRouter(
@@ -49,3 +50,20 @@ def request_pairing(payload: PairingPayload, request: Request):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(nde))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro interno no servidor.")
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+def logout(request: Request):
+    """
+    Efetua o logout do bot, desconectando e limpando as credenciais atuais.
+    """
+    provider = request.app.state.whatsapp_provider
+    use_case = LogoutUseCase(whatsapp_provider=provider)
+    
+    try:
+        resultado = use_case.execute()
+        return resultado
+    except NotificationDeliveryError as nde:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(nde))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro interno no servidor.")
+

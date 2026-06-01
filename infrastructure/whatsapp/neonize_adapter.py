@@ -107,6 +107,21 @@ class NeonizeAdapter(IWhatsAppProvider):
                 self._is_connected = False
                 self._status = "desconectado"
 
+    def logout(self) -> None:
+        """Desconecta a sessão atual e limpa as credenciais de login."""
+        if not self._client:
+            raise NotificationDeliveryError("O provedor do WhatsApp não foi inicializado.")
+        
+        try:
+            logger.info("Efetuando logout do bot...")
+            self._client.logout()
+            self._is_connected = False
+            self._status = "deslogado"
+            self._qr_code = None
+        except Exception as e:
+            logger.error(f"Erro ao efetuar logout: {e}")
+            raise NotificationDeliveryError(f"Falha ao realizar logout no Neonize: {str(e)}")
+
     def send_message(self, phone_number: str, text: str) -> None:
         """
         Envia uma mensagem utilizando o Neonize.
@@ -144,6 +159,9 @@ class NeonizeAdapter(IWhatsAppProvider):
         """
         if not self._client:
             raise NotificationDeliveryError("O provedor do WhatsApp não foi inicializado. Chame connect() primeiro.")
+        
+        if self._status == "conectado":
+            raise NotificationDeliveryError("O bot já está conectado e autenticado. Não é possível gerar código de pareamento para uma sessão ativa.")
         
         try:
             logger.info(f"Solicitando pairing code para o número {phone_number}")

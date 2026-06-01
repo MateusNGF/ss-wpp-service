@@ -18,6 +18,11 @@ class IWhatsAppProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def logout(self) -> None:
+        """Desconecta a sessão atual e limpa as credenciais de login."""
+        pass
+
+    @abc.abstractmethod
     def send_message(self, phone_number: str, text: str) -> None:
         """
         Envia uma mensagem de texto para o número especificado.
