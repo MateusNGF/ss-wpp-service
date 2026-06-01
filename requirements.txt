@@ -1,2 +1,6 @@
 neonize
 psycopg2-binary
+fastapi
+uvicorn
+pydantic
+pydantic-settings
