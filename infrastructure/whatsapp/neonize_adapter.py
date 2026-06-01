@@ -25,6 +25,7 @@ class NeonizeAdapter(IWhatsAppProvider):
         self._thread: Optional[threading.Thread] = None
         self._is_connected = False
         self._status = "desconectado"
+        self._qr_code: Optional[str] = None
 
     def _build_jid(self, phone_number: str) -> str:
         """Formata o número de telefone para o padrão JID do WhatsApp."""
@@ -57,6 +58,18 @@ class NeonizeAdapter(IWhatsAppProvider):
                 logger.info("✅ Bot conectado com sucesso via Neonize Adapter!")
                 self._is_connected = True
                 self._status = "conectado"
+                self._qr_code = None  # Limpa o QR Code pois já conectou
+
+            @self._client.qr
+            def on_qr(client: NewClient, qr_bytes: bytes):
+                logger.info("Novo QR Code recebido no Neonize Adapter.")
+                self._qr_code = qr_bytes.decode('utf-8')
+                # Opcional: manter print do QR code no terminal para logs do docker
+                try:
+                    import segno
+                    segno.make_qr(qr_bytes).terminal(compact=True)
+                except Exception as e:
+                    logger.error(f"Erro ao desenhar QR code no terminal: {e}")
 
             @self._client.event(DisconnectedEv)
             def on_disconnected(client: NewClient, ev: DisconnectedEv):
@@ -119,6 +132,10 @@ class NeonizeAdapter(IWhatsAppProvider):
     def get_status(self) -> str:
         """Retorna o status atual da conexão com o WhatsApp."""
         return self._status
+
+    def get_qr_code(self) -> Optional[str]:
+        """Retorna a string bruta do QR code gerado mais recentemente."""
+        return self._qr_code
 
     def request_pairing_code(self, phone_number: str) -> str:
         """

@@ -120,6 +120,20 @@ Gera um código alfanumérico para parear a conta com o celular através do núm
 }
 ```
 
+#### 4. Consultar QR Code
+**`GET /qrcode`**
+
+Retorna a string bruta do QR Code gerado pelo WhatsApp (caso esteja no fluxo de autenticação via QR Code) juntamente com a representação em imagem codificada em Base64 (PNG), permitindo que você a renderize diretamente em uma tag `<img>` no seu frontend.
+
+**Exemplo de Resposta:**
+```json
+{
+  "success": true,
+  "qr_code": "2@...",
+  "qr_image": "data:image/png;base64,iVBORw0KGgoAAA..."
+}
+```
+
 ---
 
 ## 🛠️ Configuração e Variáveis de Ambiente

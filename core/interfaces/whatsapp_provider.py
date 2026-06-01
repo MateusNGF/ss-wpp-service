@@ -40,6 +40,13 @@ class IWhatsAppProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_qr_code(self) -> Optional[str]:
+        """
+        Retorna a string bruta do QR code gerado mais recentemente, ou None se indisponível.
+        """
+        pass
+
+    @abc.abstractmethod
     def request_pairing_code(self, phone_number: str) -> str:
         """
         Solicita um código numérico de pareamento à biblioteca para ser exibido ao usuário.
