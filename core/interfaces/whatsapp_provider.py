@@ -1,4 +1,5 @@
 import abc
+from typing import Optional
 
 class IWhatsAppProvider(abc.ABC):
     """
