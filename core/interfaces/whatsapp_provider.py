@@ -30,3 +30,24 @@ class IWhatsAppProvider(abc.ABC):
             NotificationDeliveryError: Se ocorrer uma falha ao enviar a mensagem.
         """
         pass
+
+    @abc.abstractmethod
+    def get_status(self) -> str:
+        """
+        Retorna o status atual da conexão com o WhatsApp.
+        Ex: 'conectado', 'desconectado', 'deslogado'.
+        """
+        pass
+
+    @abc.abstractmethod
+    def request_pairing_code(self, phone_number: str) -> str:
+        """
+        Solicita um código numérico de pareamento à biblioteca para ser exibido ao usuário.
+        
+        Args:
+            phone_number (str): O número de telefone em que o WhatsApp está instalado.
+            
+        Returns:
+            str: O código de pareamento gerado (ex: ABCD-1234).
+        """
+        pass

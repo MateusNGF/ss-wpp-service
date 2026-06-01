@@ -28,9 +28,26 @@ A maneira mais rápida e resiliente de inicializar o projeto é via Docker. A in
 docker-compose up -d --build
 ```
 
-### 2. Autentique o WhatsApp (QR Code)
+### 2. Autentique o WhatsApp (Headless via API - Recomendado)
 
-Na primeira execução, o bot precisará ser autenticado com o WhatsApp (similar ao WhatsApp Web). O Neonize imprime o QR Code no terminal.
+O microsserviço agora opera em modo **Headless**. Você pode conectar o bot sem precisar abrir o terminal para escanear um QR Code:
+
+1. Chame o endpoint `/pair` informando o seu telefone:
+   ```bash
+   curl -X POST http://localhost:8000/pair \
+     -H "Content-Type: application/json" \
+     -H "X-Bot-Token: dev-token-123" \
+     -d '{"phone_number": "5511999999999"}'
+   ```
+2. O endpoint responderá com um código de pareamento de 8 dígitos (ex: `ABCD-1234`).
+3. No seu celular com WhatsApp, uma notificação solicitará o pareamento. Insira o código exibido pela API.
+4. Verifique o status da conexão fazendo polling no endpoint `/status`.
+
+---
+
+### 3. Alternativa: Autentique via QR Code (Terminal)
+
+Se preferir o fluxo tradicional, o Neonize imprimirá o QR Code no terminal.
 
 Verifique os logs interativos do container:
 ```bash
@@ -46,13 +63,10 @@ docker-compose logs -f bot
 Quando o serviço estiver rodando, a documentação interativa Swagger do FastAPI estará disponível em:
 👉 **[http://localhost:8000/docs](http://localhost:8000/docs)**
 
-### Endpoint Principal: Enviar Notificação
+### Endpoints de Integração
 
-**`POST /send/`**
-
-**Headers Obrigatórios:**
-- `X-Bot-Token`: `dev-token-123` *(O valor deste token pode ser alterado via `.env` ou `docker-compose.yml` na variável `BOT_TOKEN`)*
-- `Content-Type`: `application/json`
+#### 1. Enviar Notificação
+**`POST /send`**
 
 **Body (JSON Payload):**
 ```json
@@ -69,6 +83,41 @@ curl -X POST http://localhost:8000/send \
   -H "Content-Type: application/json" \
   -H "X-Bot-Token: dev-token-123" \
   -d '{"phone_number": "5511999999999", "text": "Teste de envio de mensagem via API!"}'
+```
+
+#### 2. Consultar Status da Conexão
+**`GET /status`**
+
+Retorna o estado atual da conexão com o WhatsApp. Útil para fazer polling e exibir o estado atual no seu dashboard frontend.
+
+**Exemplo de Resposta:**
+```json
+{
+  "success": true,
+  "status": "desconectado"
+}
+```
+*(Os valores de status possíveis são `conectado`, `desconectado` ou `deslogado`)*
+
+#### 3. Solicitar Código de Pareamento (Pairing Code)
+**`POST /pair`**
+
+Gera um código alfanumérico para parear a conta com o celular através do número de telefone, permitindo conexão 100% headless.
+
+**Body (JSON Payload):**
+```json
+{
+  "phone_number": "5511999999999"
+}
+```
+
+**Exemplo de Resposta:**
+```json
+{
+  "success": true,
+  "pairing_code": "ABCD-1234",
+  "phone_number": "5511999999999"
+}
 ```
 
 ---

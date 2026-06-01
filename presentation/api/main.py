@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from config.settings import settings
 from presentation.api.routers.send import router as send_router
+from presentation.api.routers.system import router as system_router
 from infrastructure.whatsapp.neonize_adapter import NeonizeAdapter
 
 @asynccontextmanager
@@ -34,6 +35,7 @@ app = FastAPI(
 )
 
 app.include_router(send_router)
+app.include_router(system_router)
 
 @app.get("/health")
 def health_check():

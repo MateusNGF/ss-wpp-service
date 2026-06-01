@@ -18,3 +18,16 @@ class NotificationPayload(BaseModel):
             raise ValueError("O número de telefone deve ter entre 10 e 15 dígitos numéricos válidos.")
             
         return cleaned
+
+class PairingPayload(BaseModel):
+    """Payload para solicitar código de pareamento."""
+    phone_number: str = Field(..., description="Número de telefone em que o WhatsApp está instalado.")
+
+    @field_validator('phone_number')
+    def validate_phone_number(cls, v: str) -> str:
+        cleaned = re.sub(r'\D', '', v)
+        if not cleaned:
+            raise ValueError("O número de telefone não pode estar vazio e deve conter apenas dígitos.")
+        if len(cleaned) < 10 or len(cleaned) > 15:
+            raise ValueError("O número de telefone deve ter entre 10 e 15 dígitos numéricos válidos.")
+        return cleaned

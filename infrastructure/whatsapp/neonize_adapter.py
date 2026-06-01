@@ -3,7 +3,7 @@ import threading
 from typing import Optional
 
 from neonize.client import NewClient
-from neonize.events import MessageEv, ConnectedEv, event
+from neonize.events import MessageEv, ConnectedEv, DisconnectedEv, LoggedOutEv, event
 from neonize.utils import log as neonize_log
 from neonize.types import MessageServerID
 
@@ -24,6 +24,7 @@ class NeonizeAdapter(IWhatsAppProvider):
         self._client: Optional[NewClient] = None
         self._thread: Optional[threading.Thread] = None
         self._is_connected = False
+        self._status = "desconectado"
 
     def _build_jid(self, phone_number: str) -> str:
         """Formata o número de telefone para o padrão JID do WhatsApp."""
@@ -40,6 +41,7 @@ class NeonizeAdapter(IWhatsAppProvider):
         except Exception as e:
             logger.error(f"Erro na thread do Neonize: {e}")
             self._is_connected = False
+            self._status = "desconectado"
 
     def connect(self) -> None:
         """Inicializa a conexão Neonize."""
@@ -54,6 +56,19 @@ class NeonizeAdapter(IWhatsAppProvider):
             def on_connected(client: NewClient, ev: ConnectedEv):
                 logger.info("✅ Bot conectado com sucesso via Neonize Adapter!")
                 self._is_connected = True
+                self._status = "conectado"
+
+            @self._client.event(DisconnectedEv)
+            def on_disconnected(client: NewClient, ev: DisconnectedEv):
+                logger.info("Bot desconectado.")
+                self._is_connected = False
+                self._status = "desconectado"
+
+            @self._client.event(LoggedOutEv)
+            def on_logged_out(client: NewClient, ev: LoggedOutEv):
+                logger.info("Bot deslogado.")
+                self._is_connected = False
+                self._status = "deslogado"
 
             @self._client.event(MessageEv)
             def on_message(client: NewClient, ev: MessageEv):
@@ -77,6 +92,7 @@ class NeonizeAdapter(IWhatsAppProvider):
                 logger.error(f"Erro ao desconectar Neonize: {e}")
             finally:
                 self._is_connected = False
+                self._status = "desconectado"
 
     def send_message(self, phone_number: str, text: str) -> None:
         """
@@ -99,3 +115,23 @@ class NeonizeAdapter(IWhatsAppProvider):
         except Exception as e:
             logger.error(f"Falha no envio Neonize: {e}")
             raise NotificationDeliveryError(f"Erro ao enviar mensagem via Neonize: {str(e)}")
+
+    def get_status(self) -> str:
+        """Retorna o status atual da conexão com o WhatsApp."""
+        return self._status
+
+    def request_pairing_code(self, phone_number: str) -> str:
+        """
+        Solicita o código de pareamento para o número fornecido.
+        A inicialização deve ter ocorrido antes.
+        """
+        if not self._client:
+            raise NotificationDeliveryError("O provedor do WhatsApp não foi inicializado. Chame connect() primeiro.")
+        
+        try:
+            logger.info(f"Solicitando pairing code para o número {phone_number}")
+            code = self._client.PairPhone(phone_number, show_push_notification=True)
+            return code
+        except Exception as e:
+            logger.error(f"Erro ao solicitar pairing code: {e}")
+            raise NotificationDeliveryError(f"Falha ao gerar o código de pareamento: {str(e)}")
