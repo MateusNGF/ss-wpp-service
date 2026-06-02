@@ -79,9 +79,12 @@ class NeonizeAdapter(IWhatsAppProvider):
 
             @self._client.event(LoggedOutEv)
             def on_logged_out(client: NewClient, ev: LoggedOutEv):
-                logger.info("Bot deslogado.")
+                logger.info("Bot deslogado remotamente.")
                 self._is_connected = False
                 self._status = "deslogado"
+                self._qr_code = None
+                logger.info("Agendando reinício do cliente para permitir novo pareamento...")
+                threading.Timer(2.0, self.connect).start()
 
             @self._client.event(MessageEv)
             def on_message(client: NewClient, ev: MessageEv):
@@ -115,12 +118,19 @@ class NeonizeAdapter(IWhatsAppProvider):
         try:
             logger.info("Efetuando logout do bot...")
             self._client.logout()
-            self._is_connected = False
-            self._status = "deslogado"
-            self._qr_code = None
         except Exception as e:
             logger.error(f"Erro ao efetuar logout: {e}")
             raise NotificationDeliveryError(f"Falha ao realizar logout no Neonize: {str(e)}")
+        finally:
+            try:
+                self._client.disconnect()
+            except Exception:
+                pass
+            self._is_connected = False
+            self._status = "deslogado"
+            self._qr_code = None
+            logger.info("Agendando reinício do cliente para permitir novo pareamento...")
+            threading.Timer(2.0, self.connect).start()
 
     def send_message(self, phone_number: str, text: str) -> None:
         """
