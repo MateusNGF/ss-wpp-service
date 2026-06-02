@@ -32,6 +32,29 @@ class NeonizeAdapter(IWhatsAppProvider):
         # Remove caracteres indesejados caso venham do request
         from neonize.utils import build_jid
         clean_phone = ''.join(filter(str.isdigit, phone_number))
+        
+        # Tenta resolver o JID verdadeiro consultando o WhatsApp (resolve a regra do 9º dígito no BR)
+        if self._client and self._is_connected:
+            try:
+                res = self._client.is_on_whatsapp(f"+{clean_phone}")
+                for r in res:
+                    if r.IsIn:
+                        logger.info(f"JID resolvido via WhatsApp API: {r.JID.User}")
+                        return r.JID
+            except Exception as e:
+                logger.warning(f"Falha ao consultar is_on_whatsapp: {e}")
+        
+        # Fallback heurístico para Brasil (55) com 13 dígitos (55 + DDD + 9 + 8 dígitos)
+        if clean_phone.startswith("55") and len(clean_phone) == 13:
+            try:
+                ddd = int(clean_phone[2:4])
+                # WhatsApp omite o 9º dígito internamente para DDDs > 27 no Brasil
+                if ddd > 27 and clean_phone[4] == '9':
+                    clean_phone = clean_phone[:4] + clean_phone[5:]
+                    logger.info(f"Fallback: 9º dígito removido para o DDD {ddd}. Novo número: {clean_phone}")
+            except ValueError:
+                pass
+
         return build_jid(clean_phone)
 
     def _run_client(self):
