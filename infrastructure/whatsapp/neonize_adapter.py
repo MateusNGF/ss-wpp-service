@@ -51,6 +51,15 @@ class NeonizeAdapter(IWhatsAppProvider):
             return
 
         try:
+            # Sempre recria o client para evitar deadlocks e estados presos no Go
+            if self._client is not None:
+                try:
+                    self._client.disconnect()
+                except:
+                    pass
+                # Força o Garbage Collector a limpar a instância antiga de CGo
+                self._client = None
+
             self._client = NewClient(self._database_url, uuid="bot_producao")
             
             # Registra eventos
@@ -70,7 +79,7 @@ class NeonizeAdapter(IWhatsAppProvider):
                     import segno
                     segno.make_qr(qr_bytes).terminal(compact=True)
                 except Exception as e:
-                    logger.error(f"Erro ao desenhar QR code no terminal: {e}")
+                    pass # Suprimido erro do terminal no docker para evitar crash
 
             @self._client.event(DisconnectedEv)
             def on_disconnected(client: NewClient, ev: DisconnectedEv):
@@ -85,6 +94,7 @@ class NeonizeAdapter(IWhatsAppProvider):
                 self._status = "deslogado"
                 self._qr_code = None
                 logger.info("Agendando reinício do cliente para permitir novo pareamento...")
+                import threading
                 threading.Timer(2.0, self.connect).start()
 
             @self._client.event(MessageEv)
@@ -93,8 +103,17 @@ class NeonizeAdapter(IWhatsAppProvider):
                 pass
 
             # Inicia em thread separada para não bloquear o FastAPI
-            self._thread = threading.Thread(target=self._run_client, daemon=True)
-            self._thread.start()
+            def _reconnect_task():
+                logger.info("Executando self._client.connect()...")
+                try:
+                    self._client.connect()
+                except Exception as e:
+                    logger.error(f"Erro ao conectar cliente Neonize: {e}")
+            
+            import threading
+            t = threading.Thread(target=_reconnect_task, daemon=True)
+            t.start()
+            
         except Exception as e:
             logger.error(f"Falha ao iniciar Neonize: {e}")
             raise NotificationDeliveryError(f"Falha ao inicializar o provedor do WhatsApp: {e}")
