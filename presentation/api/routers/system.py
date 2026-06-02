@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from presentation.api.dependencies import verify_bot_token
 from core.models.schemas import PairingPayload
 from application.use_cases.get_status import GetConnectionStatusUseCase
@@ -23,10 +23,14 @@ def get_system_status(request: Request):
     return use_case.execute()
 
 @router.get("/qrcode", status_code=status.HTTP_200_OK)
-def get_qr_code(request: Request):
+def get_qr_code(request: Request, response: Response):
     """
     Retorna a string bruta e imagem base64 do QR code gerado.
     """
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
     provider = request.app.state.whatsapp_provider
     use_case = GetQRCodeUseCase(whatsapp_provider=provider)
     

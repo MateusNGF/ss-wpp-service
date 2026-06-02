@@ -30,9 +30,9 @@ class GetQRCodeUseCase:
             try:
                 import segno
                 buff = io.BytesIO()
-                # Cria o QR code e salva em memória no formato PNG
-                segno.make_qr(qr_string).save(buff, kind='png', scale=5)
-                qr_base64 = f"data:image/png;base64,{base64.b64encode(buff.getvalue()).decode('utf-8')}"
+                # Cria o QR code e salva em memória no formato SVG para garantir leitura perfeita independente do tamanho da tela
+                segno.make_qr(qr_string).save(buff, kind='svg', scale=5, dark='black', light='white')
+                qr_base64 = f"data:image/svg+xml;base64,{base64.b64encode(buff.getvalue()).decode('utf-8')}"
             except Exception as e:
                 logger.error(f"Erro ao converter QR Code para base64 com segno: {e}")
 
