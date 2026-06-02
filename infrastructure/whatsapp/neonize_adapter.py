@@ -27,11 +27,12 @@ class NeonizeAdapter(IWhatsAppProvider):
         self._status = "desconectado"
         self._qr_code: Optional[str] = None
 
-    def _build_jid(self, phone_number: str) -> str:
-        """Formata o número de telefone para o padrão JID do WhatsApp."""
-        if not phone_number.endswith("@s.whatsapp.net"):
-            return f"{phone_number}@s.whatsapp.net"
-        return phone_number
+    def _build_jid(self, phone_number: str):
+        """Formata o número de telefone para o padrão JID do WhatsApp usando build_jid do Neonize."""
+        # Remove caracteres indesejados caso venham do request
+        from neonize.utils import build_jid
+        clean_phone = ''.join(filter(str.isdigit, phone_number))
+        return build_jid(clean_phone)
 
     def _run_client(self):
         """Executa a conexão do cliente em uma thread separada."""
@@ -140,7 +141,7 @@ class NeonizeAdapter(IWhatsAppProvider):
             raise NotificationDeliveryError("O provedor do WhatsApp não está conectado.")
 
         jid = self._build_jid(phone_number)
-        logger.info(f"Enviando mensagem para {jid}")
+        logger.info(f"Enviando mensagem para {phone_number} (JID interno criado)")
         
         try:
             # Envia a mensagem (o Neonize pode lançar exceções se falhar)
