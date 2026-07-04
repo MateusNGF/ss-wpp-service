@@ -186,12 +186,23 @@ class NeonizeAdapter(IWhatsAppProvider):
 
         logger.info(f"Consultando servidor do WhatsApp para {clean_phone} (evita Erro 463)...")
         try:
-            # is_on_whatsapp faz o whatsmeow buscar tctoken e cstoken
+            # is_on_whatsapp faz o whatsmeow buscar a identidade primária
             responses = self._client.is_on_whatsapp("+" + clean_phone)
             if not responses or not responses[0].IsIn:
                 raise NotificationDeliveryError(f"O número {phone_number} não possui WhatsApp ativo.")
             jid = responses[0].JID
             logger.info(f"JID validado via servidor: {jid.User}")
+            
+            # Força o carregamento dos tokens de privacidade (tctoken/cstoken) na memória.
+            # Ajuda a evitar o Erro 463 mesmo se o PgBouncer do Postgres falhar ao salvar no banco.
+            try:
+                self._client.subscribe_presence(jid)
+                self._client.get_user_info(jid)
+                import time
+                time.sleep(0.5)  # Pequeno delay para os pacotes XMPP de privacidade chegarem
+            except Exception as e_info:
+                logger.debug(f"Aviso ao buscar tokens extras (ignorado): {e_info}")
+
         except Exception as e:
             if isinstance(e, NotificationDeliveryError):
                 raise e
@@ -207,8 +218,18 @@ class NeonizeAdapter(IWhatsAppProvider):
                  
             logger.info(f"Mensagem enviada com sucesso para {jid.User}.")
         except Exception as e:
-            logger.error(f"Falha no envio Neonize: {e}")
-            raise NotificationDeliveryError(f"Erro ao enviar mensagem via Neonize: {str(e)}")
+            error_msg = str(e)
+            logger.error(f"Falha no envio Neonize: {error_msg}")
+            
+            # Tratamento específico para o bloqueio Anti-Spam do WhatsApp (463)
+            if "error 463" in error_msg.lower() or "nackcallerreachouttimelocked" in error_msg.lower():
+                raise NotificationDeliveryError(
+                    f"WhatsApp bloqueou o envio para {phone_number} (Erro 463). "
+                    "Motivo: Bloqueio Anti-Spam (Reachout Timelocked) para contatos frios. "
+                    "Aguarde o bloqueio expirar ou peça para o contato enviar uma mensagem primeiro."
+                )
+                
+            raise NotificationDeliveryError(f"Erro ao enviar mensagem via Neonize: {error_msg}")
 
     def get_status(self) -> str:
         """Retorna o status atual da conexão com o WhatsApp."""
