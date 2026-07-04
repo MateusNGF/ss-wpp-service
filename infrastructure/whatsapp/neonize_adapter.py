@@ -172,17 +172,40 @@ class NeonizeAdapter(IWhatsAppProvider):
         if not self._is_connected or not self._client:
             raise NotificationDeliveryError("O provedor do WhatsApp não está conectado.")
 
-        jid = self._build_jid(phone_number)
-        logger.info(f"Enviando mensagem para {phone_number} (JID interno criado)")
+        clean_phone = ''.join(filter(str.isdigit, phone_number))
+        
+        # Mantemos o tratamento BR básico caso o número precise disso
+        if clean_phone.startswith("55") and len(clean_phone) == 13:
+            try:
+                ddd = int(clean_phone[2:4])
+                if ddd > 27 and clean_phone[4] == '9':
+                    clean_phone = clean_phone[:4] + clean_phone[5:]
+                    logger.info(f"Ajuste prévio BR: {clean_phone}")
+            except ValueError:
+                pass
+
+        logger.info(f"Consultando servidor do WhatsApp para {clean_phone} (evita Erro 463)...")
+        try:
+            # is_on_whatsapp faz o whatsmeow buscar tctoken e cstoken
+            responses = self._client.is_on_whatsapp("+" + clean_phone)
+            if not responses or not responses[0].IsIn:
+                raise NotificationDeliveryError(f"O número {phone_number} não possui WhatsApp ativo.")
+            jid = responses[0].JID
+            logger.info(f"JID validado via servidor: {jid.User}")
+        except Exception as e:
+            if isinstance(e, NotificationDeliveryError):
+                raise e
+            logger.warning(f"Falha ao validar no servidor ({e}). Usando fallback...")
+            jid = self._build_jid(phone_number)
+            logger.info(f"Enviando mensagem usando JID construído manualmente: {jid.User}")
         
         try:
-            # Envia a mensagem (o Neonize pode lançar exceções se falhar)
+            # Envia a mensagem
             response = self._client.send_message(jid, text)
-            # O Neonize retorna um MessageServerID ou similar.
             if not response:
                  logger.warning("Nenhuma resposta obtida após envio da mensagem (verifique os logs).")
                  
-            logger.info(f"Mensagem enviada com sucesso para {jid}.")
+            logger.info(f"Mensagem enviada com sucesso para {jid.User}.")
         except Exception as e:
             logger.error(f"Falha no envio Neonize: {e}")
             raise NotificationDeliveryError(f"Erro ao enviar mensagem via Neonize: {str(e)}")
